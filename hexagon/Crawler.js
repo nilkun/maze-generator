@@ -1,77 +1,6 @@
-import Viewport from '../engine/Viewport.js';
 import Vector from '../engine/Vector.js';
-
-const twoSquared = 1.41421356237;
-const diagonal = 10;
-const horizontal = diagonal * twoSquared;
-const hexColumns = 20;
-const hexIndices = 20;
-const spaceBetween = (2 * horizontal + 2 * diagonal)/2;
-const scale = spaceBetween;
-const offset = new Vector(0, diagonal);
-
-
-class Hexagon {
-    constructor(col, index) {
-        this.column = col;
-        this.index = index;
-
-        this.neighbour = new Array(6);
-        this.neighbour.fill(false);
-        // could somehow extract this.
-        this.isVisited = false;
-    }
-
-    // render()
-
-    render() {
-        // THIS FUNCTION DOES NOT STROKE, SHOULD BE DONE BY PARENT
-        let position = new Vector(offset.x + this.column * scale, offset.y + this.index * 2 * diagonal);
-
-        if(this.column%2===0) {
-            position.y += diagonal;
-        }
-
-        context.moveTo(position.x, position.y); // SET POSITION TO LEFT SIDE
-
-        // MOVE DIAGONALLY DOWN RIGHT AND THEN DRAW LINE IF THIS.NEIGHBOUR IS FALSE
-        position.x += diagonal;
-        position.y += diagonal;
-        if(!this.neighbour[0]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y);
-
-        // MOVE HORIZONTALLY RIGHT
-        position.x += horizontal;
-        if(!this.neighbour[1]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y)
-    
-        // MOVE DIAGONALLY UP RIGHT
-        position.x += diagonal;
-        position.y -= diagonal;
-        if(!this.neighbour[2]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y);
-
-        // MOVE DIAGONALLY UP LEFT
-        position.x -= diagonal;
-        position.y -= diagonal;
-        if(!this.neighbour[3]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y);
-        
-        // MOVE HORIZONTALLY LEFT
-        position.x -= horizontal;
-        if(!this.neighbour[4]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y)
-    
-        // MOVE DIAGONALLY DOWN LEFT
-        position.x -= diagonal;
-        position.y += diagonal;
-        if(!this.neighbour[5]) context.lineTo(position.x, position.y);
-        else context.moveTo (position.x, position.y)        
-    }
-}
-
-class Crawler{
-    constructor(clone) {
+export default class Crawler{
+    constructor(clone, indices, columns, context, offset, scale, diagonal, horizontal) {
         this.stack = [];
         this.grid = clone.slice(0);
         this.next = new Vector();
@@ -80,22 +9,31 @@ class Crawler{
         this.column = 0;
         this.index = 0;
         this.limit = 0;
+
+        this.hexIndices = indices;
+        this.hexColumns = columns;
+
+        this.context = context;
+        this.offset = offset;
+        this.scale = scale;
+        this.diagonal = diagonal;
+        this.horizontal = horizontal;
     }
 
     getNeighbours() {
         //TO FIND PATH
         let availableNeighbours = [];
 
-        // IF CURRENT INDEX + 1 < HEXINDICES
+        // IF CURRENT INDEX + 1 < this.hexIndices
         // IE, IF THE NEXT INDEX IS WITHIN LIMITS
-        if(this.index<(hexIndices-1) 
-            && !this.grid[this.column + (this.index + 1) * hexColumns].isVisited) 
+        if(this.index<(this.hexIndices-1) 
+            && !this.grid[this.column + (this.index + 1) * this.hexColumns].isVisited) 
                 availableNeighbours.push(new Vector(this.column, this.index + 1));
         
         // IF CURRENT INDEX > 0
         // IE, IF THE PREVIOUS INDEX IS WITHIN LIMITS
         if(this.index > 0 
-            && !this.grid[this.column + (this.index - 1) * hexColumns].isVisited) 
+            && !this.grid[this.column + (this.index - 1) * this.hexColumns].isVisited) 
                 availableNeighbours.push(new Vector(this.column, this.index - 1));
 
         // IF THE COLUMN IS AN EVEN NUMBER
@@ -103,23 +41,23 @@ class Crawler{
             // IF COLUMN IS NOT ALL THE WAY TO THE LEFT
             if(this.column > 0) {
                 // THEN ADD LEFT COLUMN, SAME INDEX (ABOVE)
-                if(!this.grid[this.column - 1 + (this.index) * hexColumns].isVisited) 
+                if(!this.grid[this.column - 1 + (this.index) * this.hexColumns].isVisited) 
                     availableNeighbours.push(new Vector(this.column - 1, this.index));
                 // IF INDEX IS NOT THE LAST ONE
-                if(this.index < hexIndices - 1 
-                    && !this.grid[this.column -1 + (this.index + 1) * hexColumns].isVisited) 
+                if(this.index < this.hexIndices - 1 
+                    && !this.grid[this.column -1 + (this.index + 1) * this.hexColumns].isVisited) 
                         // THEN ADD LEFT COLUMN, INDEX + 1 (BELOW)
                         availableNeighbours.push(new Vector(this.column - 1, this.index + 1));
             }
                  
             // IF COLUMN IS NOT ALL THE WAY TO THE RIGHT
-            if(this.column < hexIndices - 1) {
+            if(this.column < this.hexIndices - 1) {
                 // THEN ADD RIGHT COLUMN, SAME INDEX
-                if(!this.grid[this.column + 1 + (this.index) * hexColumns].isVisited) 
+                if(!this.grid[this.column + 1 + (this.index) * this.hexColumns].isVisited) 
                     availableNeighbours.push(new Vector(this.column + 1, this.index));
                 // IF INDEX IS NOT THE LAST ONE
-                if(this.index < hexIndices - 1 
-                    && !this.grid[this.column + 1 + (this.index + 1) * hexColumns].isVisited) 
+                if(this.index < this.hexIndices - 1 
+                    && !this.grid[this.column + 1 + (this.index + 1) * this.hexColumns].isVisited) 
                         // THEN ADD RIGHT COLUMN, INDEX + 1
                         availableNeighbours.push(new Vector(this.column + 1, this.index + 1));
             }                
@@ -130,24 +68,24 @@ class Crawler{
             if(this.column > 0) {
                 // IF INDEX IS NOT THE FIRST ONE
                 if(this.index > 0 
-                    && !this.grid[this.column - 1 + (this.index - 1) * hexColumns].isVisited) 
+                    && !this.grid[this.column - 1 + (this.index - 1) * this.hexColumns].isVisited) 
                         // THEN ADD LEFT COLUMN, INDEX - 1 (ABOVE)
                         availableNeighbours.push(new Vector(this.column - 1, this.index - 1));                         
                 // THEN ADD LEFT COLUMN, INDEX (BELOW)           
-                if(!this.grid[this.column - 1 + (this.index) * hexColumns].isVisited) 
+                if(!this.grid[this.column - 1 + (this.index) * this.hexColumns].isVisited) 
                     availableNeighbours.push(new Vector(this.column - 1, this.index));
 
             }
             
             // IF COLUMN IS NOT ALL THE WAY TO THE RIGHT
-            if(this.column < hexColumns - 1) {
+            if(this.column < this.hexColumns - 1) {
                 // IF INDEX IS NOT THE FIRST ONE               
                 if(this.index > 0 
-                    && !this.grid[this.column + 1 + (this.index - 1) * hexColumns].isVisited) 
+                    && !this.grid[this.column + 1 + (this.index - 1) * this.hexColumns].isVisited) 
                         // THEN ADD RIGHT COLUMN, INDEX - 1 
                         availableNeighbours.push(new Vector(this.column + 1, this.index - 1));
                 // THEN ADD RIGHT COLUMN, SAME INDEX                
-                if(!this.grid[this.column + 1 + (this.index) * hexColumns].isVisited) 
+                if(!this.grid[this.column + 1 + (this.index) * this.hexColumns].isVisited) 
                     availableNeighbours.push(new Vector(this.column + 1, this.index));
             }  
         } 
@@ -269,7 +207,7 @@ class Crawler{
         else if(this.stack.length > 0) {
             
             this.renderCrawler();
-            this.renderHex();
+            this.renderHex(this.offset, this.scale, this.diagonal, this.context, this.horizontal);
             const popped = this.stack.pop();
             this.column = popped.x;
             this.index = popped.y;
@@ -277,92 +215,52 @@ class Crawler{
 
         } 
         else {
-            completed = true;
+            this.completed = true;
         }
     }
     renderHex() {
-        context.beginPath();
-        this.grid[this.column + this.index * 20].render();
-        context.strokeStyle = "black";
-        context.stroke();
+        this.context.beginPath();
+        this.grid[this.column + this.index * 20].render(this.offset, this.scale, this.diagonal, this.context, this.horizontal);
+        this.context.strokeStyle = "black";
+        this.context.stroke();
     }
 
     renderCrawler() {
         this.drawCrawler();
-        context.fillStyle = "orange";
-        context.fill();
-        context.strokeStyle = "orange";
-        context.stroke();
+        this.context.fillStyle = "orange";
+        this.context.fill();
+        this.context.strokeStyle = "orange";
+        this.context.stroke();
     }
 
     drawCrawler() {
-        context.beginPath();
+        this.context.beginPath();
         
-        let position = new Vector(offset.x + this.column * scale, offset.y + this.index * 2 * diagonal);
+        let position = new Vector(this.offset.x + this.column * this.scale, this.offset.y + this.index * 2 * this.diagonal);
 
         if(this.column%2===0) {
-            position.y += diagonal;
+            position.y += this.diagonal;
         }
 
-        context.moveTo(position.x, position.y);
+        this.context.moveTo(position.x, position.y);
         
-        position.x += diagonal;
-        position.y += diagonal;
-        context.lineTo(position.x, position.y);
+        position.x += this.diagonal;
+        position.y += this.diagonal;
+        this.context.lineTo(position.x, position.y);
 
-        position.x += horizontal;
-        context.lineTo(position.x, position.y);
+        position.x += this.horizontal;
+        this.context.lineTo(position.x, position.y);
     
-        position.x += diagonal;
-        position.y -= diagonal;
-        context.lineTo(position.x, position.y);
+        position.x += this.diagonal;
+        position.y -= this.diagonal;
+        this.context.lineTo(position.x, position.y);
 
-        position.x -= diagonal;
-        position.y -= diagonal;
-        context.lineTo(position.x, position.y);
+        position.x -= this.diagonal;
+        position.y -= this.diagonal;
+        this.context.lineTo(position.x, position.y);
 
-        position.x -= horizontal;
-        context.lineTo(position.x, position.y);
+        position.x -= this.horizontal;
+        this.context.lineTo(position.x, position.y);
     }
 
 }
-
-const init = () => {
-    viewport.clear();
-    for(let i = 0; i < 20; i++) {
-        for(let j = 0; j < 20; j++) {
-            hex.push(new Hexagon(j, i));
-        }
-    }
-    context.beginPath();
-    hex.forEach(item => item.render());
-    context.strokeStyle = "black";
-    context.stroke();
-
-    crawl = new Crawler(hex);
-    document.addEventListener("click", () => crawl.move());
-    running = setInterval(()=>update(), 30);
-}
-
-const update = () => {
-    if(completed) clearInterval(running);
-    crawl.move();
-}
-
-const restart = () => {
-    clearInterval(running);
-    completed = false;
-    hex = [];
-    init();
-}
-const viewport = new Viewport(Math.ceil(hexColumns*spaceBetween) + diagonal, Math.ceil(hexColumns*spaceBetween));
-const context = viewport.context;
-let completed = false;
-let hex = [];
-let crawl;
-let running;
-
-document.getElementById('button').addEventListener("click", () => restart());
-
-init();
-
